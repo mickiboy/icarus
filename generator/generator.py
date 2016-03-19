@@ -18,15 +18,6 @@ from util import *
 # MAIN SITE #
 #############
 
-def generate_archive(dates):
-    archive = ""
-    for d in dates:
-        a = get_month(d)
-        if a not in archive:
-            archive += ('<li><a href="">{title}</a></li>'.format(title=str(a) + ' ' + str(re.sub(r'(.*)\-(.*)\-(.*)', r'\1', d)) ))
-    return archive
-
-
 def build_main_site(title, stylesheet, articles):
     out = html_items.get_header(title, stylesheet)
     sidebar_t, sidebar_a = "", []
@@ -72,9 +63,46 @@ def build_articles(title, stylesheet, articles):
     pass
 
 
+####################
+# ARCHIVE OVERVIEW #
+####################
+
+def build_archive_pages(title, stylesheet, articles):
+    sidebar = build_sidebar(articles)
+    months, pages = [], {}
+    
+    for a in articles:
+        d = get_month(a[0]["date"])
+        if d not in months:
+            months.append(d)
+    for m in months:
+        out = html_items.get_header(title, stylesheet)
+        for ar in articles:
+            a = ar[0]
+            if get_month(a["date"]) == m:
+                out += html_items.get_blog_card(a["title"], a["content"], a["author"], "{day} {month} {year}".format(
+                        day=re.sub(r'(.*)\-(.*)\-(.*)$', r'\3', a["date"]),
+                        month=get_month(a["date"]),
+                        year=re.sub(r'(.*)\-(.*)\-(.*)$', r'\1', a["date"])
+                    ), generate_filename(ar[1], a["title"]))
+
+        out += sidebar
+        out += html_items.get_footer()
+        write_html('../static/archive-' + m + '.html', out)
+    pass
+
 #########
 # UTILS #
 #########
+
+def generate_archive(dates):
+    archive = ""
+    for d in dates:
+        a = get_month(d)
+        if a not in archive:
+            archive += ('<li><a href="{url}">{title}</a></li>'.format(url="./archive-" + a + ".html", title=str(a) + ' ' + str(re.sub(r'(.*)\-(.*)\-(.*)', r'\1', d))))
+    return archive 
+
 
 def generate_filename(date, title):
     return "{date}-{title}.html".format(
@@ -116,10 +144,16 @@ def main():
     log('fetching articles')
     content = fetch_articles('../articles/')
     content = sorted(content, key=lambda content: content[1], reverse=True)
+    
     log('generate main site')
     build_main_site('icarus', 'default.css', content)
+    
     log('generate articles')
     build_articles('icarus', 'default.css', content)
+    
+    log('generate archives')
+    build_archive_pages('icarus', 'default.css', content)
+    
     print()
     log('Success!')
     pass
